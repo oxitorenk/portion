@@ -132,8 +132,6 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .save-area { margin-top: 32px; display: grid; gap: 12px; }
 .save-area p:empty { display: none; }
 .save-area button { width: fit-content; justify-self: center; }
-.error-summary { border: 1px solid var(--color-danger); border-radius: 16px; padding: 16px; margin-bottom: 24px; }
-.error-summary ul { padding-left: 20px; }
 dialog { max-width: min(480px, calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow: auto; border: 0; border-radius: 24px; background: var(--color-surface); color: var(--color-text); padding: 24px; box-shadow: var(--shadow-floating); }
 dialog::backdrop { background: rgb(36 31 28 / 40%); }
 dialog[open] { animation: confirm-open 180ms cubic-bezier(0.16, 1, 0.3, 1) both; }
@@ -155,7 +153,7 @@ dialog .actions { margin-top: 24px; justify-content: flex-end; }
 .row-front:active { opacity: 1; background: color-mix(in srgb, var(--color-surface) 94%, var(--color-text)); }
 .moving .row-front, .moving .swipe-actions { transition: none; }
 .row-front:focus-visible, .swipe-actions button:focus-visible { outline-offset: -4px; }
-.form-row { min-height: 56px; padding: 16px; display: grid; gap: 4px; overflow-wrap: anywhere; user-select: none; -webkit-user-select: none; }
+.form-row { min-height: 56px; padding: 16px; display: flex; align-items: center; gap: 12px; overflow-wrap: anywhere; user-select: none; -webkit-user-select: none; }
 .sortable-row { margin-bottom: 12px; }
 .form-list { background: var(--color-surface); border-radius: 16px; overflow: hidden; }
 .form-list .sortable-row { margin-bottom: 0; }
@@ -168,9 +166,25 @@ dialog .actions { margin-top: 24px; justify-content: flex-end; }
 .add-row > svg { width: 20px; height: 20px; flex-shrink: 0; }
 .form-list:has(.sortable-row) > .add-row { border-top: 1px solid var(--color-border); }
 .add-row:focus-visible { outline-offset: -4px; }
-.sortable-ghost { opacity: .35; background: var(--color-accent); border-radius: 20px; }
-.sortable-chosen > .swipe-row { box-shadow: 0 4px 16px rgb(36 31 28 / 12%); }
-.sortable-fallback { opacity: .9; }
+.reorder-hint { margin-block: 8px 12px; }
+.recipe-list > .sortable-row { margin-bottom: 0; }
+.row-content { display: grid; gap: 4px; min-width: 0; flex: 1; }
+.recipe-name { flex: 1; }
+.sortable-row .row-front { cursor: grab; }
+.sorting-disabled .sortable-row .row-front { cursor: default; }
+.sortable-ghost { opacity: .25; }
+.sortable-row > .swipe-row { transition: transform 160ms cubic-bezier(.16, 1, .3, 1), box-shadow 160ms ease-out; }
+.form-list:has(.sortable-chosen) { overflow: visible; }
+.sortable-chosen { position: relative; z-index: 1; }
+.sortable-chosen > .swipe-row { border-radius: 16px; box-shadow: var(--shadow-floating); transform: rotate(-1.5deg) scale(1.02); }
+.sortable-chosen .row-front { cursor: grabbing; }
+.sortable-ghost > .swipe-row { transform: none; box-shadow: none; transition: none; }
+.sortable-fallback { opacity: 1 !important; overflow: visible; }
+.sortable-fallback > .swipe-row { border-radius: 16px; box-shadow: var(--shadow-floating); transform: rotate(-1.5deg) scale(1.02); }
+.sortable-fallback .row-front { cursor: grabbing; }
+@media (prefers-reduced-motion: reduce) {
+  .sortable-chosen > .swipe-row, .sortable-fallback > .swipe-row { transform: none; }
+}
 .update-banner { margin-top: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 
 ::view-transition-old(root), ::view-transition-new(root) {

@@ -1,6 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie';
 
-export type Unit = 'g' | 'ml' | 'adet';
+export type Unit = 'g' | 'ml' | 'adet' | 'çay kaşığı' | 'yemek kaşığı' | 'tatlı kaşığı';
 export type Ingredient = { id: string; name: string; amount?: number; unit?: Unit };
 export type Step = { id: string; text: string };
 export type Recipe = {
@@ -11,6 +11,7 @@ export type Recipe = {
   ingredients: Ingredient[];
   steps: Step[];
   createdAt: number;
+  sortOrder?: number;
 };
 export type Draft = {
   name: string;
@@ -53,7 +54,7 @@ export function validateDraft(draft: Draft) {
     if (row.amount.trim() && (amount === undefined || amount <= 0)) {
       errors[`ingredient-${row.id}-amount`] = 'Sıfırdan büyük geçerli bir miktar girin.';
     }
-    if (row.amount.trim() && !['g', 'ml', 'adet'].includes(row.unit)) {
+    if (row.amount.trim() && !['g', 'ml', 'adet', 'çay kaşığı', 'yemek kaşığı', 'tatlı kaşığı'].includes(row.unit)) {
       errors[`ingredient-${row.id}-unit`] = 'Birimi seçin.';
     }
     return {
@@ -88,7 +89,24 @@ export function createId(): string {
 }
 
 export async function listRecipes(db = database): Promise<Recipe[]> {
-  return db.recipes.orderBy('createdAt').reverse().toArray();
+  const recipes = await db.recipes.orderBy('createdAt').reverse().toArray();
+  return recipes.sort((a, b) => (b.sortOrder ?? b.createdAt) - (a.sortOrder ?? a.createdAt));
+}
+
+export async function reorderRecipes(ids: string[], db = database): Promise<void> {
+  await db.transaction('rw', db.recipes, async () => {
+    const recipes = await listRecipes(db);
+    const selected = new Set(ids);
+    if (selected.size !== ids.length || ids.some((id) => !recipes.some((recipe) => recipe.id === id))) {
+      throw new Error('Tarif sırası geçersiz.');
+    }
+    const ordered = ids.map((id) => recipes.find((recipe) => recipe.id === id)!);
+    let index = 0;
+    const base = Math.max(Date.now(), ...recipes.map((recipe) => recipe.createdAt));
+    await db.recipes.bulkPut(recipes.map((recipe, position) => ({
+      ...(selected.has(recipe.id) ? ordered[index++] : recipe), sortOrder: base - position,
+    })));
+  });
 }
 
 export async function readRecipe(id: string, db = database): Promise<Recipe> {
@@ -104,7 +122,7 @@ export async function saveRecipe(draft: Draft, id?: string, db = database): Prom
       const previous = id ? await readRecipe(id, db) : undefined;
       const latest = previous ? undefined : await db.recipes.orderBy('createdAt').last();
       const createdAt = previous?.createdAt ?? Math.max(Date.now(), (latest?.createdAt ?? 0) + 1);
-      const recipe = { ...values, id: id ?? createId(), createdAt };
+      const recipe = { ...values, id: id ?? createId(), createdAt, ...(previous?.sortOrder !== undefined ? { sortOrder: previous.sortOrder } : {}) };
       await db.recipes.put(recipe);
       return recipe;
     });

@@ -64,6 +64,6 @@
       if (offset) { closeRow(); return; } onopen?.();
     }}>{@render children()}</button>
   {:else}
-    <div class="row-front form-row" tabindex="-1" style:transform={`translateX(${offset}px)`}>{@render children()}</div>
+    <div class="row-front form-row" tabindex="-1" style:transform={`translateX(${offset}px)`}><div class="row-content">{@render children()}</div></div>
   {/if}
 </div>

@@ -17,8 +17,8 @@
   let errors = $state<FieldErrors>({});
   let message = $state('');
   let failure = $state('');
-  let form: HTMLFormElement;
   const dirty = $derived(JSON.stringify(draft) !== baseline);
+  const sortingDisabled = $derived(busy || draft.ingredients.some((row) => editing[row.id]) || draft.steps.some((row) => editing[row.id]));
   $effect(() => onstate(dirty, busy));
 
   function beginEdit(id: string, kind: 'ingredient' | 'step', added = false) {
@@ -94,8 +94,7 @@
     }
     await tick();
     const keys = Object.keys(errors);
-    if (keys.length > 1) form.querySelector<HTMLElement>('.error-summary')?.focus();
-    else if (keys.length === 1) document.getElementById(keys[0])?.focus();
+    if (keys.length) document.getElementById(keys[0])?.focus();
   }
 </script>
 
@@ -104,13 +103,7 @@
 {/snippet}
 
 <h1>{recipeId ? 'Tarifi düzenle' : 'Yeni tarif'}</h1>
-<form bind:this={form} onsubmit={save} novalidate oninput={() => { message = ''; }}>
-  {#if Object.keys(errors).length > 1}
-    <div class="error-summary" role="alert" tabindex="-1" aria-labelledby="error-title">
-      <h2 id="error-title">Alanları kontrol edin</h2>
-      <ul>{#each Object.entries(errors) as [id, text] (id)}<li><a href={`#${id}`} onclick={(event) => { event.preventDefault(); document.getElementById(id)?.focus(); }}>{text}</a></li>{/each}</ul>
-    </div>
-  {/if}
+<form onsubmit={save} novalidate oninput={() => { message = ''; }}>
   <fieldset disabled={busy}>
     <div class="field">
       <label for="name">Tarif adı</label>
@@ -124,8 +117,9 @@
     </div>
     <section class="recipe-section" aria-labelledby="ingredients-title">
       <h2 id="ingredients-title">Malzemeler</h2>
+      <p class="muted reorder-hint">Basılı tutup sürükleyerek sıralayın.</p>
       <div class="form-list">
-      <div use:sortable={{ disabled: busy, onchange: (ids) => { draft.ingredients = ids.map((id) => draft.ingredients.find((row) => row.id === id)!); } }}>
+      <div class:sorting-disabled={sortingDisabled} use:sortable={{ disabled: sortingDisabled, onchange: (ids) => { draft.ingredients = ids.map((id) => draft.ingredients.find((row) => row.id === id)!); } }}>
       {#each draft.ingredients as row (row.id)}
         <div class="sortable-row" id={`ingredient-row-${row.id}`} data-id={row.id}>
         {#if !editing[row.id]}
@@ -149,7 +143,7 @@
             <div class="field">
               <label for={`ingredient-${row.id}-unit`}>Birim</label>
               <select id={`ingredient-${row.id}-unit`} bind:value={row.unit} aria-invalid={!!errors[`ingredient-${row.id}-unit`]} aria-describedby={errors[`ingredient-${row.id}-unit`] ? `ingredient-${row.id}-unit-error` : undefined}>
-                <option value="">Seçin</option><option value="g">g</option><option value="ml">ml</option><option value="adet">adet</option>
+                <option value="">Seçin</option><option value="g">g</option><option value="ml">ml</option><option value="adet">adet</option><option value="çay kaşığı">çay kaşığı</option><option value="yemek kaşığı">yemek kaşığı</option><option value="tatlı kaşığı">tatlı kaşığı</option>
               </select>
               {@render error(`ingredient-${row.id}-unit`)}
             </div>
@@ -174,8 +168,9 @@
     </section>
     <section class="recipe-section" aria-labelledby="steps-title">
       <h2 id="steps-title">Hazırlama adımları</h2>
+      <p class="muted reorder-hint">Basılı tutup sürükleyerek sıralayın.</p>
       <div class="form-list">
-      <div use:sortable={{ disabled: busy, onchange: (ids) => { draft.steps = ids.map((id) => draft.steps.find((row) => row.id === id)!); } }}>
+      <div class:sorting-disabled={sortingDisabled} use:sortable={{ disabled: sortingDisabled, onchange: (ids) => { draft.steps = ids.map((id) => draft.steps.find((row) => row.id === id)!); } }}>
       {#each draft.steps as row, index (row.id)}
         <div class="sortable-row" id={`step-row-${row.id}`} data-id={row.id}>
         {#if !editing[row.id]}

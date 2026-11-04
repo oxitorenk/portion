@@ -8,6 +8,7 @@ export function sortable(node: HTMLElement, options: { disabled: boolean; onchan
     touchStartThreshold: 8,
     fallbackTolerance: 8,
     forceFallback: true,
+    fallbackOnBody: true,
     draggable: '.sortable-row',
     handle: '.row-front',
     filter: 'input, textarea, select, .row-editor, .swipe-actions',

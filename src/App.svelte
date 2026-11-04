@@ -2,8 +2,9 @@
   import { onMount, tick } from 'svelte';
   import { registerSW } from 'virtual:pwa-register';
   import { scaleCalories } from './portion';
-  import { createId, deleteRecipe, listRecipes, normalizeName, readRecipe, type Recipe } from './recipes';
+  import { createId, deleteRecipe, listRecipes, reorderRecipes, normalizeName, readRecipe, type Recipe } from './recipes';
   import SwipeRow from './SwipeRow.svelte';
+  import { sortable } from './sortable';
   import Icon from './Icon.svelte';
   import Confirm from './Confirm.svelte';
   import Detail from './Detail.svelte';
@@ -18,6 +19,7 @@
   let query = $state('');
   let loading = $state(true);
   let listError = $state(false);
+  let reorderError = $state(false);
   let current = $state<Recipe>();
   let panelLoading = $state(false);
   let panelError = $state(false);
@@ -49,6 +51,13 @@
       loading = false;
       if (route.kind === 'list') { await tick(); window.scrollTo(0, listScroll); }
     }
+  }
+
+  async function reorder(ids: string[]) {
+    busy = true; reorderError = false;
+    try { await reorderRecipes(ids); await loadList(); }
+    catch { reorderError = true; }
+    finally { busy = false; }
   }
 
   async function loadPanel() {
@@ -191,7 +200,9 @@
   {#if offlineError}
     <div class="update-banner"><p class="error" role="alert">Çevrimdışı kullanım hazırlanamadı. Lütfen tekrar deneyin.</p><button disabled={busy} onclick={registerWorker}>Tekrar dene</button></div>
   {/if}
-  <div class="recipe-list" aria-busy={loading}>
+  {#if !loading && visible.length > 1}<p class="muted reorder-hint">Basılı tutup sürükleyerek sıralayın.</p>{/if}
+  {#if reorderError}<p class="error" role="alert">Tarif sırası kaydedilemedi. Lütfen tekrar deneyin.</p>{/if}
+  <div class="recipe-list" aria-busy={loading || busy} use:sortable={{ disabled: busy || loading, onchange: (ids) => { void reorder(ids); } }}>
     {#if loading}
       <span class="sr-only" role="status">Tarifler yükleniyor</span>
       <div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div>
@@ -201,9 +212,11 @@
     {:else if !visible.length}<p class="empty" role="status">Aramanıza uygun tarif bulunamadı</p>
     {:else}
       {#each visible as recipe (recipe.id)}
+        <div class="sortable-row" data-id={recipe.id}>
         <SwipeRow label={recipe.name} disabled={busy} onopen={() => open({ kind: 'detail', id: recipe.id })} onedit={() => open({ kind: 'form', id: recipe.id })} ondelete={() => { pendingDelete = recipe; }}>
           <span class="recipe-name">{recipe.name}</span><span class="muted">{scaleCalories(recipe.calories, 1)} kcal</span>
         </SwipeRow>
+        </div>
       {/each}
     {/if}
   </div>
