@@ -7,14 +7,14 @@
 </script>
 
 <header class="recipe-heading">
-  <div class="recipe-identity">
-    <h1>{recipe.name}</h1>
+  <h1>{recipe.name}</h1>
+  <div class="recipe-meta">
     <p class="muted" role="status">{parsed ? `${scaleCalories(recipe.calories, parsed)} kcal` : 'Geçerli bir porsiyon girin.'}</p>
-  </div>
     <div class="portions">
       <label for="portions">Porsiyon</label>
       <input id="portions" inputmode="decimal" bind:value={portions} aria-invalid={!parsed} aria-describedby={!parsed ? 'portion-error' : undefined} />
     </div>
+  </div>
 </header>
   {#if !parsed}<p id="portion-error" class="error" role="alert">Sıfırdan büyük, en fazla iki ondalık basamaklı bir porsiyon girin.</p>{/if}
 <section class="recipe-section">

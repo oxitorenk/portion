@@ -3,6 +3,7 @@
   import SwipeRow from './SwipeRow.svelte';
   import Icon from './Icon.svelte';
   import { sortable } from './sortable';
+  import { keepFieldVisible } from './keepFieldVisible';
   import { createId, saveRecipe, toDraft, ValidationError, type Draft, type FieldErrors, type Recipe } from './recipes';
   let { recipe, onstate, onsaved }: {
     recipe?: Recipe; onstate: (dirty: boolean, busy: boolean) => void; onsaved: (recipe: Recipe) => void;
@@ -103,7 +104,7 @@
 {/snippet}
 
 <h1>{recipeId ? 'Tarifi düzenle' : 'Yeni tarif'}</h1>
-<form onsubmit={save} novalidate oninput={() => { message = ''; }}>
+<form use:keepFieldVisible onsubmit={save} novalidate oninput={() => { message = ''; }}>
   <fieldset disabled={busy}>
     <div class="field">
       <label for="name">Tarif adı</label>
