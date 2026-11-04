@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { fly } from 'svelte/transition';
   import { registerSW } from 'virtual:pwa-register';
   import { scaleCalories } from './portion';
   import { createId, deleteRecipe, listRecipes, normalizeName, readRecipe, type Recipe } from './recipes';
@@ -36,7 +35,10 @@
   let restoring = false;
   let loadVersion = 0;
   let listScroll = 0;
+  let navigationTransition: ViewTransition | undefined;
   const openers = new Map<number, HTMLElement>();
+  const routes = new Map<number, Route>([[0, { kind: 'list' }]]);
+  const backLabel = $derived(routes.get(index - 1)?.kind === 'detail' ? 'Tarif' : 'Tarifler');
   const visible = $derived(recipes.filter((recipe) => recipe.normalizedName.includes(normalizeName(query))));
 
   async function loadList() {
@@ -62,6 +64,7 @@
   }
 
   async function show(next: Route) {
+    routes.set(index, next);
     dirty = false; busy = false; route = next;
     await loadPanel(); await tick();
     if (next.kind === 'list') {
@@ -72,14 +75,16 @@
     }
   }
 
-  function focusBack(node: HTMLButtonElement) {
-    void tick().then(() => node.focus());
+  function navigate(next: Route, motion: 'forward' | 'back' | 'up') {
+    navigationTransition?.skipTransition();
+    if (reducedMotion || !document.startViewTransition) { void show(next); return; }
+    document.documentElement.dataset.navigation = motion;
+    navigationTransition = document.startViewTransition(() => show(next));
+    void navigationTransition.finished.catch(() => {});
   }
 
-  function deactivatePanel(event: Event) {
-    const panel = event.target as HTMLElement;
-    panel.inert = true;
-    panel.setAttribute('aria-hidden', 'true');
+  function focusBack(node: HTMLButtonElement) {
+    void tick().then(() => node.focus());
   }
 
   function open(next: Route) {
@@ -88,8 +93,9 @@
     const active = document.activeElement as HTMLElement;
     openers.set(index, active.closest('.swipe-row')?.querySelector<HTMLElement>('.row-front') ?? active);
     index++;
+    const creating = next.kind === 'form' && !next.id;
     history.pushState({ portion: session, index, route: next } satisfies Entry, '');
-    void show(next);
+    navigate(next, creating ? 'up' : 'forward');
   }
 
   function back() {
@@ -102,6 +108,7 @@
     busy = true; deleteError = false;
     try {
       await deleteRecipe(recipe.id);
+      dirty = false;
       await loadList();
       if (route.kind !== 'list') history.go(-index);
       else document.querySelector<HTMLElement>('.search-field input')?.focus({ preventScroll: true });
@@ -149,7 +156,9 @@
         if (dirty && !pending) pending = () => { dirty = false; history.go(delta); };
         return;
       }
-      index = entry.index; void show(entry.route);
+      const backwards = entry.index < index;
+      index = entry.index;
+      navigate(entry.route, backwards ? 'back' : 'forward');
     };
     const unload = (event: BeforeUnloadEvent) => {
       if (applyingUpdate || (!dirty && !busy)) return;
@@ -193,34 +202,46 @@
     {:else}
       {#each visible as recipe (recipe.id)}
         <SwipeRow label={recipe.name} disabled={busy} onopen={() => open({ kind: 'detail', id: recipe.id })} onedit={() => open({ kind: 'form', id: recipe.id })} ondelete={() => { pendingDelete = recipe; }}>
-          <span class="recipe-name">{recipe.name}</span><span class="muted">{scaleCalories(recipe.calories, 1)} kcal · 1 porsiyon</span>
+          <span class="recipe-name">{recipe.name}</span><span class="muted">{scaleCalories(recipe.calories, 1)} kcal</span>
         </SwipeRow>
       {/each}
     {/if}
   </div>
   {#if deleteError && route.kind === 'list'}<p class="error" role="alert">Tarif silinemedi. Lütfen tekrar deneyin.</p>{/if}
-  <footer class="list-footer"><button class="primary" disabled={busy} onclick={() => open({ kind: 'form' })}><Icon name="plus" />Yeni tarif</button></footer>
+  <footer class="list-footer"><button class="primary" aria-label="Yeni tarif" disabled={busy} onclick={() => open({ kind: 'form' })}><Icon name="plus" /></button></footer>
 </main>
 
 {#if route.kind !== 'list'}
   {#key `${route.kind}-${index}`}
-    <section class="panel" aria-label={route.kind === 'detail' ? 'Tarif detayı' : 'Tarif formu'} onoutrostart={deactivatePanel} in:fly={{ x: reducedMotion ? 0 : 24, duration: reducedMotion ? 0 : 220 }} out:fly={{ x: reducedMotion ? 0 : 24, duration: reducedMotion ? 0 : 180 }}>
+    <section class="panel" aria-label={route.kind === 'detail' ? 'Tarif detayı' : 'Tarif formu'}>
       <div class="app-shell">
-        <button class="panel-back" use:focusBack disabled={busy} onclick={back}><Icon name="back" />Geri</button>
+        <div class="detail-toolbar">
+          <button class="panel-back" use:focusBack disabled={busy} onclick={back}><Icon name="back" />{backLabel}</button>
+          {#if current && !panelLoading && !panelError}
+            <div class="actions detail-actions">
+              {#if route.kind === 'detail'}
+                <button class="primary" disabled={busy} onclick={() => open({ kind: 'form', id: current!.id })}>Düzenle</button>
+              {:else}
+                <button class="danger" disabled={busy} onclick={() => { if (!busy) pendingDelete = current; }}>Sil</button>
+              {/if}
+            </div>
+          {/if}
+        </div>
         <div aria-busy={panelLoading}>
           {#if panelLoading}<div class="skeleton" aria-hidden="true"></div><span class="sr-only" role="status">Tarif yükleniyor</span>
           {:else if panelError}
             <p class="error" role="alert">Tarif yüklenemedi. Lütfen tekrar deneyin.</p><button onclick={loadPanel}>Tekrar dene</button>
           {:else if route.kind === 'detail' && current}
-            <Detail recipe={current} onedit={() => open({ kind: 'form', id: current!.id })} ondelete={() => { if (!busy) pendingDelete = current; }} />
-            {#if deleteError}<p class="error" role="alert">Tarif silinemedi. Lütfen tekrar deneyin.</p>{/if}
+            <Detail recipe={current} />
           {:else if route.kind === 'form'}
             <RecipeForm recipe={current} onstate={(changed, saving) => { dirty = changed; busy = saving; }} onsaved={(saved) => {
+              current = saved;
               route = { kind: 'form', id: saved.id };
               history.replaceState({ portion: session, index, route: $state.snapshot(route) } satisfies Entry, '');
               void loadList();
             }} />
           {/if}
+          {#if deleteError}<p class="error" role="alert">Tarif silinemedi. Lütfen tekrar deneyin.</p>{/if}
         </div>
       </div>
     </section>
@@ -228,7 +249,9 @@
 {/if}
 
 {#if pendingDelete}
-  <Confirm title="Tarifi sil" message={`“${pendingDelete.name}” tarifini silmek istiyor musunuz?`} cancel="Vazgeç" confirm="Sil" onclose={(confirmed) => { const recipe = pendingDelete; pendingDelete = undefined; if (confirmed && recipe) void remove(recipe); }} />
+  <Confirm title="Tarif silinsin mi?" cancel="Vazgeç" confirm="Sil" onclose={(confirmed) => { const recipe = pendingDelete; pendingDelete = undefined; if (confirmed && recipe) void remove(recipe); }}>
+    {#snippet message()}<strong>“{pendingDelete!.name}”</strong> kalıcı olarak silinecek.{/snippet}
+  </Confirm>
 {/if}
 
 {#if pending}

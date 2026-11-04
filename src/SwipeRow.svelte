@@ -1,5 +1,9 @@
+<script module lang="ts">
+  let closeActiveRow: (() => void) | undefined;
+</script>
+
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import { onDestroy, type Snippet } from 'svelte';
   let { children, label, onedit, ondelete, onopen, disabled = false }: {
     children: Snippet; label: string; onedit: () => void; ondelete: () => void; onopen?: () => void; disabled?: boolean;
   } = $props();
@@ -11,6 +15,13 @@
   let tracking = false;
   let suppressClick = false;
   let host: HTMLDivElement;
+
+  function closeRow() {
+    offset = 0; moving = false; tracking = false;
+    if (closeActiveRow === closeRow) closeActiveRow = undefined;
+  }
+
+  onDestroy(() => { if (closeActiveRow === closeRow) closeActiveRow = undefined; });
 
   function start(event: PointerEvent) {
     if (disabled || event.button !== 0 || !event.isPrimary || event.clientX < 24 ||
@@ -26,6 +37,8 @@
     if (!moving) {
       if (Math.abs(y) > 8 && Math.abs(y) >= Math.abs(x)) { tracking = false; return; }
       if (Math.abs(x) < 8 || Math.abs(x) <= Math.abs(y) * 1.2) return;
+      if (closeActiveRow !== closeRow) closeActiveRow?.();
+      closeActiveRow = closeRow;
       moving = true; suppressClick = true;
       host.setPointerCapture(event.pointerId);
     }
@@ -36,18 +49,19 @@
     if (host.hasPointerCapture(event.pointerId)) host.releasePointerCapture(event.pointerId);
     if (tracking || moving) offset = !cancelled && offset < -64 ? -176 : 0;
     tracking = false; moving = false;
+    if (!offset && closeActiveRow === closeRow) closeActiveRow = undefined;
   }
 </script>
 
 <div bind:this={host} class="swipe-row" class:moving role="group" aria-label={label} onpointerdown={start} onpointermove={move} onpointerup={(event) => finish(event)} onpointercancel={(event) => finish(event, true)}>
-  <div class="swipe-actions" inert={offset !== -176 || moving}>
-    <button type="button" disabled={disabled} onclick={() => { offset = 0; onedit(); }}>Düzenle</button>
+  <div class="swipe-actions" style:transform={`translateX(${176 + offset}px)`} inert={offset !== -176 || moving}>
+    <button type="button" disabled={disabled} onclick={() => { closeRow(); onedit(); }}>Düzenle</button>
     <button type="button" class="danger" disabled={disabled} onclick={ondelete}>Sil</button>
   </div>
   {#if onopen}
     <button class="row-front recipe-card" type="button" disabled={disabled} style:transform={`translateX(${offset}px)`} onclick={(event) => {
       if (suppressClick || host.closest('.sortable-chosen')) { event.preventDefault(); return; }
-      if (offset) { offset = 0; return; } onopen?.();
+      if (offset) { closeRow(); return; } onopen?.();
     }}>{@render children()}</button>
   {:else}
     <div class="row-front form-row" tabindex="-1" style:transform={`translateX(${offset}px)`}>{@render children()}</div>
