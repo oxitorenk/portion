@@ -30,11 +30,13 @@
   let pending = $state<(() => void) | undefined>();
   let pendingDelete = $state<Recipe>();
   let deleteError = $state(false);
-  let updateAvailable = $state(false);
+  const previewUpdate = import.meta.env.DEV && new URLSearchParams(location.search).has('preview-update');
+  let updateAvailable = $state(previewUpdate);
   let offlineError = $state(false);
   let applyUpdate: ((reloadPage?: boolean) => Promise<void>) | undefined;
-  let applyingUpdate = false;
-  let autoUpdateAttempted = false;
+  let applyingUpdate = $state(false);
+  let updateError = $state(false);
+  let autoUpdateAttempted = previewUpdate;
   let stopUpdateChecks: (() => void) | undefined;
   let disposed = false;
   let reloadReady = false;
@@ -150,11 +152,11 @@
 
   async function updateApp() {
     if (route.kind !== 'list' || dirty || busy || pending || pendingDelete || !applyUpdate) return;
-    applyingUpdate = true; busy = true;
+    updateError = false; applyingUpdate = true; busy = true;
     try {
       if (reloadReady) location.reload();
       else await applyUpdate(true);
-    } catch { applyingUpdate = false; busy = false; offlineError = true; }
+    } catch { applyingUpdate = false; busy = false; updateError = true; }
   }
 
   onMount(() => {
@@ -208,18 +210,11 @@
   });
 </script>
 
-<main class="app-shell list-shell" inert={route.kind !== 'list'} aria-hidden={route.kind !== 'list'} aria-label="Tarifler">
+<main class="app-shell list-shell" class:has-update={updateAvailable || offlineError} inert={route.kind !== 'list'} aria-hidden={route.kind !== 'list'} aria-label="Tarifler">
   <div class="search-field">
     <Icon name="search" />
     <input type="search" aria-label="Tarif ara" placeholder="Tarif ara" bind:value={query} />
   </div>
-  {#if updateAvailable}
-    <div class="update-banner" role="status"><p>Yeni sürüm hazır.</p><button disabled={busy} onclick={updateApp}>Güncelle</button></div>
-  {/if}
-  {#if offlineError}
-    <div class="update-banner"><p class="error" role="alert">Çevrimdışı kullanım hazırlanamadı. Lütfen tekrar deneyin.</p><button disabled={busy} onclick={registerWorker}>Tekrar dene</button></div>
-  {/if}
-  {#if !loading && visible.length > 1}<p class="muted reorder-hint">Basılı tutup sürükleyerek sıralayın.</p>{/if}
   {#if reorderError}<p class="error" role="alert">Tarif sırası kaydedilemedi. Lütfen tekrar deneyin.</p>{/if}
   <div class="recipe-list" aria-busy={loading || busy} use:sortable={{ disabled: busy || loading, onchange: (ids) => { void reorder(ids); } }}>
     {#if loading}
@@ -240,7 +235,16 @@
     {/if}
   </div>
   {#if deleteError && route.kind === 'list'}<p class="error" role="alert">Tarif silinemedi. Lütfen tekrar deneyin.</p>{/if}
-  <footer class="list-footer"><button class="primary" aria-label="Yeni tarif" disabled={busy} onclick={() => open({ kind: 'form' })}><Icon name="plus" /></button></footer>
+  <footer class="list-footer">
+    {#if updateAvailable || offlineError}
+      <div class="update-notice" role="status" aria-live="polite">
+        <p>{applyingUpdate ? 'Güncelleniyor…' : updateError ? 'Güncelleme tamamlanamadı.' : updateAvailable ? 'Yeni sürüm hazır' : 'Çevrimdışı kullanım hazırlanamadı.'}</p>
+        {#if !applyingUpdate}
+          <button type="button" disabled={busy || !!pending || !!pendingDelete} onclick={updateAvailable ? updateApp : registerWorker}>{updateError || offlineError ? 'Tekrar dene' : 'Yenile'}</button>
+        {/if}
+      </div>
+    {/if}
+<button class="primary" aria-label="Yeni tarif" disabled={busy} onclick={() => open({ kind: 'form' })}><Icon name="plus" /></button></footer>
 </main>
 
 {#if route.kind !== 'list'}
