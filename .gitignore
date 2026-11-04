@@ -1,0 +1,11 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local overrides
+*.local
+
+# IDE settings
+.idea/
