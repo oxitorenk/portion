@@ -1,6 +1,7 @@
 import Sortable from 'sortablejs';
 
 export function sortable(node: HTMLElement, options: { disabled: boolean; onchange: (ids: string[]) => void }) {
+  let originalNext: ChildNode | null = null;
   const sortable = Sortable.create(node, {
     animation: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 160,
     delay: 350,
@@ -14,12 +15,13 @@ export function sortable(node: HTMLElement, options: { disabled: boolean; onchan
     filter: 'input, textarea, select, .row-editor, .swipe-actions',
     preventOnFilter: false,
     disabled: options.disabled,
+    onChoose(event) { originalNext = event.item.nextSibling; },
     onEnd(event) {
-      if (event.oldDraggableIndex === undefined || event.newDraggableIndex === undefined || event.oldDraggableIndex === event.newDraggableIndex) return;
       const order = sortable.toArray();
-      const original = [...order];
-      original.splice(event.oldDraggableIndex, 0, original.splice(event.newDraggableIndex, 1)[0]);
-      sortable.sort(original);
+      // Restore the exact DOM position, including Svelte's text/comment boundaries.
+      node.insertBefore(event.item, originalNext);
+      originalNext = null;
+      if (event.oldDraggableIndex === undefined || event.newDraggableIndex === undefined || event.oldDraggableIndex === event.newDraggableIndex) return;
       if (!options.disabled) options.onchange(order);
     },
   });
