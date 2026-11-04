@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { registerSW } from 'virtual:pwa-register';
+  import { updateChecks } from './updateChecks';
   import { scaleCalories } from './portion';
   import { createId, deleteRecipe, listRecipes, reorderRecipes, normalizeName, readRecipe, type Recipe } from './recipes';
   import SwipeRow from './SwipeRow.svelte';
@@ -33,6 +34,9 @@
   let offlineError = $state(false);
   let applyUpdate: ((reloadPage?: boolean) => Promise<void>) | undefined;
   let applyingUpdate = false;
+  let autoUpdateAttempted = false;
+  let stopUpdateChecks: (() => void) | undefined;
+  let disposed = false;
   let reloadReady = false;
   let restoring = false;
   let loadVersion = 0;
@@ -129,6 +133,11 @@
     offlineError = false;
     applyUpdate = registerSW({
       immediate: true,
+      onRegisteredSW(_url, registration) {
+        if (!registration || disposed) return;
+        stopUpdateChecks?.();
+        stopUpdateChecks = updateChecks(registration);
+      },
       onNeedRefresh() { updateAvailable = true; },
       onNeedReload() {
         reloadReady = true;
@@ -140,7 +149,7 @@
   }
 
   async function updateApp() {
-    if (route.kind !== 'list' || dirty || busy || !applyUpdate) return;
+    if (route.kind !== 'list' || dirty || busy || pending || pendingDelete || !applyUpdate) return;
     applyingUpdate = true; busy = true;
     try {
       if (reloadReady) location.reload();
@@ -149,6 +158,7 @@
   }
 
   onMount(() => {
+    disposed = false;
     if ('serviceWorker' in navigator) registerWorker();
     history.replaceState({ portion: session, index: 0, route: { kind: 'list' } } satisfies Entry, '');
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -177,10 +187,19 @@
     window.addEventListener('beforeunload', unload);
     void loadList();
     return () => {
+      disposed = true;
+      stopUpdateChecks?.();
       window.removeEventListener('popstate', pop);
       window.removeEventListener('beforeunload', unload);
       motion.removeEventListener('change', updateMotion);
     };
+  });
+
+  $effect(() => {
+    if (updateAvailable && !loading && route.kind === 'list' && !dirty && !busy && !pending && !pendingDelete && !autoUpdateAttempted) {
+      autoUpdateAttempted = true;
+      void updateApp();
+    }
   });
 
   $effect(() => {
