@@ -148,11 +148,11 @@ dialog .actions { margin-top: 24px; justify-content: flex-end; }
 .swipe-actions { position: absolute; inset: 0 0 0 auto; display: flex; width: 176px; transition: transform 160ms ease-out; }
 .swipe-actions button { width: 88px; padding-inline: 8px; border: 0; border-radius: 0; background: var(--color-accent); }
 .swipe-actions .danger { background: var(--color-danger); }
-.row-front { position: relative; background: var(--color-surface); transition: transform 160ms ease-out; }
+.row-front { position: relative; background: var(--color-surface); transition: transform 160ms ease-out; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .row-front:active { opacity: 1; background: color-mix(in srgb, var(--color-surface) 94%, var(--color-text)); }
 .moving .row-front, .moving .swipe-actions { transition: none; }
 .row-front:focus-visible, .swipe-actions button:focus-visible { outline-offset: -4px; }
-.form-row { min-height: 56px; padding: 16px; display: flex; align-items: center; gap: 12px; overflow-wrap: anywhere; user-select: none; -webkit-user-select: none; }
+.form-row { min-height: 56px; padding: 16px; display: flex; align-items: center; gap: 12px; overflow-wrap: anywhere; }
 .sortable-row { margin-bottom: 12px; }
 .form-list { background: var(--color-surface); border-radius: 16px; overflow: hidden; }
 .form-list .sortable-row { margin-bottom: 0; }
