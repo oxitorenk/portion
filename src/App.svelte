@@ -170,16 +170,15 @@
       const entry = event.state as Entry | null;
       if (restoring) { restoring = false; return; }
       if (!entry || entry.portion !== session) return;
-      if (busy || dirty) {
-        const delta = entry.index - index;
+      const delta = entry.index - index;
+      if (delta > 0 || busy || dirty) {
         if (!delta) return;
         restoring = true; history.go(-delta);
-        if (dirty && !pending) pending = () => { dirty = false; history.go(delta); };
+        if (delta < 0 && dirty && !pending) pending = () => { dirty = false; history.go(delta); };
         return;
       }
-      const backwards = entry.index < index;
       index = entry.index;
-      navigate(entry.route, backwards ? 'back' : 'forward', event.hasUAVisualTransition);
+      navigate(entry.route, 'back', event.hasUAVisualTransition);
     };
     const unload = (event: BeforeUnloadEvent) => {
       if (applyingUpdate || (!dirty && !busy)) return;
