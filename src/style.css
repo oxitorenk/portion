@@ -165,7 +165,6 @@ dialog .actions { margin-top: 24px; justify-content: flex-end; }
 .add-row > svg { width: 20px; height: 20px; flex-shrink: 0; }
 .form-list:has(.sortable-row) > .add-row { border-top: 1px solid var(--color-border); }
 .add-row:focus-visible { outline-offset: -4px; }
-.reorder-hint { margin-block: 8px 12px; }
 .recipe-list > .sortable-row { margin-bottom: 0; }
 .row-content { display: grid; gap: 4px; min-width: 0; flex: 1; }
 .recipe-name { flex: 1; }

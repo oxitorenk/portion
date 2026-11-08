@@ -118,7 +118,6 @@
     </div>
     <section class="recipe-section" aria-labelledby="ingredients-title">
       <h2 id="ingredients-title">Malzemeler</h2>
-      <p class="muted reorder-hint">Basılı tutup sürükleyerek sıralayın.</p>
       <div class="form-list">
       <div class:sorting-disabled={sortingDisabled} use:sortable={{ disabled: sortingDisabled, onchange: (ids) => { draft.ingredients = ids.map((id) => draft.ingredients.find((row) => row.id === id)!); } }}>
       {#each draft.ingredients as row (row.id)}
@@ -169,7 +168,6 @@
     </section>
     <section class="recipe-section" aria-labelledby="steps-title">
       <h2 id="steps-title">Hazırlama adımları</h2>
-      <p class="muted reorder-hint">Basılı tutup sürükleyerek sıralayın.</p>
       <div class="form-list">
       <div class:sorting-disabled={sortingDisabled} use:sortable={{ disabled: sortingDisabled, onchange: (ids) => { draft.steps = ids.map((id) => draft.steps.find((row) => row.id === id)!); } }}>
       {#each draft.steps as row, index (row.id)}
