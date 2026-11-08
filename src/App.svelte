@@ -90,9 +90,9 @@
     }
   }
 
-  function navigate(next: Route, motion: 'forward' | 'back' | 'up') {
+  function navigate(next: Route, motion: 'forward' | 'back' | 'up', hasUAVisualTransition = false) {
     navigationTransition?.skipTransition();
-    if (reducedMotion || !document.startViewTransition) { void show(next); return; }
+    if (hasUAVisualTransition || reducedMotion || !document.startViewTransition) { void show(next); return; }
     document.documentElement.dataset.navigation = motion;
     navigationTransition = document.startViewTransition(() => show(next));
     void navigationTransition.finished.catch(() => {});
@@ -179,7 +179,7 @@
       }
       const backwards = entry.index < index;
       index = entry.index;
-      navigate(entry.route, backwards ? 'back' : 'forward');
+      navigate(entry.route, backwards ? 'back' : 'forward', event.hasUAVisualTransition);
     };
     const unload = (event: BeforeUnloadEvent) => {
       if (applyingUpdate || (!dirty && !busy)) return;
