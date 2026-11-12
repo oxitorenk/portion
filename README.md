@@ -1,6 +1,4 @@
 <div align="center">
-  <img src="public/icons/icon-192.png" alt="" width="80" height="80" />
-
   <h1>Portion</h1>
   <p>Your recipes at hand. Your portions just right.</p>
 
