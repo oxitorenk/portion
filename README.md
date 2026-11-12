@@ -3,8 +3,6 @@
   <p>Your recipes at hand. Your portions just right.</p>
 
   <img src="docs/images/portion-mobile.png" alt="Portion on mobile: a full recipe list, a recipe scaled to three servings, and the recipe editor. Screenshots use English sample content." width="100%" />
-
-  <p><a href="https://oxitorenk.github.io/portion/"><strong>Open Portion →</strong></a></p>
 </div>
 
 ---
